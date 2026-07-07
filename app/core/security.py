@@ -26,7 +26,7 @@ def sanitize_and_validate(payload: Dict[str, Any]) -> None:
     if not payload:
         raise RequestValidationException("Request payload is empty.")
     
-    prompt = payload.get("prompt")
+    prompt = payload.get("prompt") or payload.get("request")
     if prompt is None:
         raise RequestValidationException("Missing required field: 'prompt'")
         

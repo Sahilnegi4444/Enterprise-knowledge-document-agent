@@ -23,6 +23,22 @@ def test_api_agent_endpoint_success():
     assert "reflection_report" in data
     assert "score" in data["reflection_report"]
 
+def test_api_agent_endpoint_with_request_field():
+    payload = {
+        "request": "Create a Business Proposal for Project Alpha. Incorporate standard practices.",
+        "metadata": {"author": "Sahil"}
+    }
+    
+    response = client.post("/agent", json=payload)
+    
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert data["success"] is True
+    assert "docx_base64" in data
+    assert len(data["docx_base64"]) > 0
+    assert data["intent"] == "Proposal"
+
 def test_api_agent_validation_error():
     # Payload with injection attempt
     payload = {

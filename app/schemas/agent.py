@@ -1,9 +1,10 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, AliasChoices
 from typing import Dict, Any, List, Optional
 
 class AgentRequest(BaseModel):
     prompt: str = Field(
         ...,
+        validation_alias=AliasChoices('request', 'prompt'),
         description="The business request or instructions for the document generation",
         examples=["Create a technical design for our database migration. We need to migrate from PostgreSQL to DynamoDB. Discuss schema mapping, cost estimation, and migration steps."]
     )
