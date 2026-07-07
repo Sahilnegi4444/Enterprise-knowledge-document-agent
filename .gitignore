@@ -1,0 +1,34 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Configuration and Credentials
+.env
+
+# Data & Database Directories (Chroma, logs, telemetry audits)
+data/
+
+# Generated Output Documents
+generated_docs/
+*_output.docx
+*.docx
+
+# Testing and Caching
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor / IDE Configuration
+.vscode/
+.idea/
+
+# IDE System Files
+.agents/
+.gemini/
