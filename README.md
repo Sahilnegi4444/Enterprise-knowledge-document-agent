@@ -113,29 +113,70 @@ To ensure enterprise-grade stability, the system handles external service disrup
 
 ## 5. Engineering Decisions & Performance Trade-offs
 
-### 1. Hybrid Planning
-* **Decision**: Well-defined requests skip the LLM Planner and execute a rule-based plan.
-* **Trade-off**: Reduces dynamic adaptability. If a user asks for a very strange hybrid document (e.g. "a project proposal that is also a risk report"), the rule-based planner might classify it strictly as a `Proposal` and miss the dual intent. However, for 95% of standard requests, it reduces latency by **~4.5 seconds** and saves planning tokens.
-
-### 2. Task-Specific Model Routing (Multi-Model Workflow)
-* **Decision**: Configured different model variables in `.env` to route tasks based on cost/reasoning weight:
-  * `FALLBACK_MODEL`: `llama-3.1-8b-instant` (Fallback tasks)
-  * `PLANNER_MODEL`: `llama-3.1-8b-instant` (Fast reasoning)
-  * `REFLECTION_MODEL`: `llama-3.1-8b-instant` (Auditing checklist items)
-  * `GENERATOR_MODEL`: `llama-3.3-70b-versatile` (Large generation - Only place using 70B)
-* **Trade-off**: Requires managing multiple active model configurations, but dramatically lowers token cost and speeds up intermediate reasoning steps.
-
-### 3. Reflection Optimization
-* **Decision**: Run a Python validation check (checking empty paragraphs, missing headings matching planner validation items) before invoking the LLM Reflection auditor.
-* **Trade-off**: Simple documents with typos in required headings might fail Python validation and trigger LLM reflection anyway. However, it completely avoids calling the LLM Reflection Auditor for successful standard generation, shaving **~1.5 seconds** off standard execution.
-
-### 4. Technical Stack Decisions
-* **Why Chroma?** It is a lightweight, embeddable vector database that runs entirely in-process. This eliminates the latency and operational overhead of maintaining an external vector service (like Pinecone or Milvus) during development. The trade-off is that it cannot scale horizontally out-of-the-box, but it is highly performant for cataloged corporate templates.
-* **Why FastAPI?** It provides native, high-performance asynchronous request handling. This allows the system to process incoming API requests concurrently and automatically generates interactive OpenAPI Swagger docs.
-* **Why Groq?** Groq’s LPU (Language Processing Unit) architecture delivers exceptionally fast inference with ultra-low Time-to-First-Token (TTFT), making multi-turn reflection audits and document generation fast enough for real-time web usage.
-* **Why Single Agent?** A single-agent structure avoids the communication overhead, state synchronization conflicts, and long loop latencies associated with multi-agent swarms. It executes sequential reasoning steps in a reliable and predictable manner.
+### 1. Single-Agent Architecture
+- **Decision:** Implemented a single autonomous agent responsible for planning, tool selection, execution, and document generation.
+- **Why:** The assignment focuses on autonomous reasoning rather than distributed coordination. A single-agent architecture keeps the workflow simple, predictable, and easier to debug while still demonstrating autonomous planning and dynamic tool orchestration.
+- **Trade-off:** While multi-agent systems provide better specialization and parallelism, they introduce additional communication overhead, state management complexity, and orchestration latency that are unnecessary for this assignment.
 
 ---
+
+### 2. Task-Specific Model Routing (Multi-Model Workflow)
+- **Decision:** Different LLMs are configured through environment variables based on the complexity of each task.
+
+```text
+PLANNER_MODEL     -> llama-3.1-8b-instant
+GENERATOR_MODEL   -> llama-3.3-70b-versatile
+REFLECTION_MODEL  -> llama-3.1-8b-instant
+FALLBACK_MODEL    -> llama-3.1-8b-instant
+```
+
+- **Why:** Planning and document auditing are lightweight reasoning tasks that do not require a large model, while document generation benefits from the higher reasoning capability of the 70B model.
+- **Trade-off:** Managing multiple model configurations adds slight implementation complexity but significantly reduces API cost and overall latency while maintaining document quality.
+
+---
+
+### 3. Two-Stage Document Validation
+- **Decision:** Before returning the generated document, the system performs two validation stages:
+  1. Lightweight Python validation for document structure.
+  2. LLM-based semantic review only when required.
+
+- **Why:** Python efficiently detects structural issues such as missing headings, empty sections, and invalid document formatting without consuming LLM tokens. The smaller LLM is reserved for reviewing content quality and completeness.
+
+- **Trade-off:** This introduces a small amount of additional validation logic but avoids unnecessary LLM calls for structurally invalid outputs and improves the overall quality of generated documents.
+
+---
+
+### 4. Retrieval-Augmented Generation (RAG)
+- **Decision:** Internal enterprise templates and engineering best practices are stored as Markdown documents, embedded into ChromaDB, and retrieved before generation.
+
+- **Why:** Grounding the LLM with internal knowledge reduces hallucinations, improves consistency, and allows the agent to generate documents following predefined organizational standards.
+
+- **Trade-off:** Maintaining a knowledge base requires periodic updates, but it is significantly more flexible than fine-tuning the model whenever documentation changes.
+
+---
+
+### 5. Web Search as an Optional Tool
+- **Decision:** Web search is executed only when the planner determines that recent or external information is required.
+
+- **Why:** Many requests (e.g., SOPs or project proposals) can be completed entirely from internal knowledge, while requests involving recent technologies or industry trends benefit from external search.
+
+- **Trade-off:** Conditional tool execution reduces unnecessary API calls, lowers latency, and minimizes dependency on external services while preserving access to up-to-date information when needed.
+
+---
+
+### 6. Technical Stack Decisions
+
+#### Why FastAPI?
+FastAPI provides high-performance asynchronous request handling, automatic request validation using Pydantic, and interactive OpenAPI documentation through Swagger UI, making it well suited for AI backend services.
+
+#### Why ChromaDB?
+ChromaDB is a lightweight, embedded vector database that requires no external infrastructure. It is ideal for MVPs and demonstration projects while still supporting efficient semantic retrieval.
+
+#### Why Groq?
+Groq offers low-latency inference with high-performance open-source LLMs, making it an excellent choice for responsive AI applications while remaining cost-effective during development.
+
+#### Why Markdown Knowledge Base?
+Markdown files are simple to maintain, version control, and update. They also provide clean semantic structure for chunking and retrieval within the RAG pipeline.
 
 ## 6. Professional Document Styling (DOCX Compiler)
 
