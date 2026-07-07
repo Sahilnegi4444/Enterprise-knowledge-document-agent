@@ -9,7 +9,7 @@ from app.core.retry import async_retry
 class LLMClient:
     def __init__(self):
         self.api_key = settings.GROQ_API_KEY
-        self.model = settings.DEFAULT_MODEL
+        self.model = settings.FALLBACK_MODEL
         self.temperature = settings.TEMPERATURE
         
         self.is_mock = self.api_key == "mock_groq_api_key" or not self.api_key

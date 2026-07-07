@@ -88,7 +88,16 @@ Instead of split-character chunking, documents are parsed based on markdown head
 
 ---
 
-## 3. Resilience, Edge Cases, & Fallbacks
+## 3. Why Web Search & RAG?
+
+The agent operates in a dual-information retrieval structure to synthesize comprehensive enterprise documents:
+
+* **Why RAG?** RAG acts as the agent's internal anchor. It supplies standardized layouts, organization guidelines, style matrices, and corporate templates. This guarantees that all generated documents follow the precise structure and policy bounds required by the enterprise.
+* **Why Web Search?** Web search serves as the agent's window to the outside world. It fetches live, transient data such as the latest version of a software library (e.g., LangChain API features), current pricing plans (e.g., DynamoDB tier pricing), or active best practices. This overrides any stale training limits or localized knowledge gaps.
+
+---
+
+## 4. Resilience, Edge Cases, & Fallbacks
 
 To ensure enterprise-grade stability, the system handles external service disruptions gracefully:
 
@@ -102,7 +111,7 @@ To ensure enterprise-grade stability, the system handles external service disrup
 
 ---
 
-## 4. Engineering Decisions & Performance Trade-offs
+## 5. Engineering Decisions & Performance Trade-offs
 
 ### 1. Hybrid Planning
 * **Decision**: Well-defined requests skip the LLM Planner and execute a rule-based plan.
@@ -110,7 +119,7 @@ To ensure enterprise-grade stability, the system handles external service disrup
 
 ### 2. Task-Specific Model Routing (Multi-Model Workflow)
 * **Decision**: Configured different model variables in `.env` to route tasks based on cost/reasoning weight:
-  * `DEFAULT_MODEL`: `llama-3.1-8b-instant` (Fallback tasks)
+  * `FALLBACK_MODEL`: `llama-3.1-8b-instant` (Fallback tasks)
   * `PLANNER_MODEL`: `llama-3.1-8b-instant` (Fast reasoning)
   * `REFLECTION_MODEL`: `llama-3.1-8b-instant` (Auditing checklist items)
   * `GENERATOR_MODEL`: `llama-3.3-70b-versatile` (Large generation - Only place using 70B)
@@ -120,9 +129,15 @@ To ensure enterprise-grade stability, the system handles external service disrup
 * **Decision**: Run a Python validation check (checking empty paragraphs, missing headings matching planner validation items) before invoking the LLM Reflection auditor.
 * **Trade-off**: Simple documents with typos in required headings might fail Python validation and trigger LLM reflection anyway. However, it completely avoids calling the LLM Reflection Auditor for successful standard generation, shaving **~1.5 seconds** off standard execution.
 
+### 4. Technical Stack Decisions
+* **Why Chroma?** It is a lightweight, embeddable vector database that runs entirely in-process. This eliminates the latency and operational overhead of maintaining an external vector service (like Pinecone or Milvus) during development. The trade-off is that it cannot scale horizontally out-of-the-box, but it is highly performant for cataloged corporate templates.
+* **Why FastAPI?** It provides native, high-performance asynchronous request handling. This allows the system to process incoming API requests concurrently and automatically generates interactive OpenAPI Swagger docs.
+* **Why Groq?** Groq’s LPU (Language Processing Unit) architecture delivers exceptionally fast inference with ultra-low Time-to-First-Token (TTFT), making multi-turn reflection audits and document generation fast enough for real-time web usage.
+* **Why Single Agent?** A single-agent structure avoids the communication overhead, state synchronization conflicts, and long loop latencies associated with multi-agent swarms. It executes sequential reasoning steps in a reliable and predictable manner.
+
 ---
 
-## 5. Professional Document Styling (DOCX Compiler)
+## 6. Professional Document Styling (DOCX Compiler)
 
 The `DocxGenerator` is designed to compile Microsoft Word binaries that match corporate design standards:
 * **Typography**: Sets Calibri as default. Heading 1 is set to **18pt bold Deep Navy (`#1A365D`)**, Heading 2 to **14pt bold Accent Blue (`#2B6CB0`)**, and body paragraphs to **11pt Charcoal Slate (`#2D3748`)**.
@@ -132,7 +147,17 @@ The `DocxGenerator` is designed to compile Microsoft Word binaries that match co
 
 ---
 
-## 6. Getting Started & Usage
+## 7. Future Improvements
+
+* **Conversation Memory**: Implementing stateful session memories to allow users to ask follow-up questions and request specific revisions to generated documents.
+* **Multi-Agent Abstraction**: Splitting content generation into a swarm of writing agents, where each sub-agent writes and reviews a single section (e.g., technical diagram vs financial plan) concurrently before final stitching.
+* **Redis Caching**: Caching tool results, semantic collections, and final Word compilations to accelerate duplicate queries and reduce LLM token usage.
+* **Human-in-the-Loop Approval Workflow**: Adding execution checkpoints where the agent pauses (e.g., after plan formulation) to let the user edit the checklist or tools before executing RAG and generation.
+* **Persistent Audit DB**: Migrating local JSON telemetry files to a relational PostgreSQL database with visual analytics dashboards to monitor latency trends, LLM billing, and audit logs.
+
+---
+
+## 8. Getting Started & Usage
 
 ### Installation
 1. Clone the repository and navigate to the project directory.
@@ -151,7 +176,7 @@ Create a `.env` file in the root directory:
 ```env
 # Groq API Configuration
 GROQ_API_KEY=your_groq_api_key
-DEFAULT_MODEL=llama-3.1-8b-instant
+FALLBACK_MODEL=llama-3.1-8b-instant
 PLANNER_MODEL=llama-3.1-8b-instant
 GENERATOR_MODEL=llama-3.3-70b-versatile
 REFLECTION_MODEL=llama-3.1-8b-instant

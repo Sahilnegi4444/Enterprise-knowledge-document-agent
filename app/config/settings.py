@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     GROQ_API_KEY: str = "mock_groq_api_key"
-    DEFAULT_MODEL: str = "llama-3.1-8b-instant"
+    FALLBACK_MODEL: str = "llama-3.1-8b-instant"
     PLANNER_MODEL: str = "llama-3.1-8b-instant"
     GENERATOR_MODEL: str = "llama-3.3-70b-versatile"
     REFLECTION_MODEL: str = "llama-3.1-8b-instant"
