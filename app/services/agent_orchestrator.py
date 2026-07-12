@@ -134,6 +134,7 @@ class AgentOrchestrator:
             tools_executed=execution_logs,
             reflection_report=reflection_report.model_dump(),
             docx_base64=docx_base64,
+            document_data=document.model_dump(),
             message=message
         )
 

@@ -28,4 +28,5 @@ class AgentResponse(BaseModel):
     tools_executed: List[ToolExecutionLog] = Field(default_factory=list, description="Logs of tools chosen and executed")
     reflection_report: Dict[str, Any] = Field(..., description="Results of self-reflection quality check")
     docx_base64: str = Field(..., description="Base64-encoded bytes of the generated .docx file")
+    document_data: Optional[Dict[str, Any]] = Field(None, description="Structured document JSON object")
     message: str = Field(..., description="Summary message of the operation status")
